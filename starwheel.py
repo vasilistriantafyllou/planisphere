@@ -173,7 +173,7 @@ class StarWheel(BaseComponent):
             [ra, dec, mag] = star_descriptor[:3]
 
             # Discard stars fainter than mag 4
-            if mag == "-" or float(mag) > 4.0:
+            if mag == "-" or float(mag) > 7.0:
                 continue
 
             ra = float(ra)

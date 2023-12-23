@@ -28,6 +28,7 @@ to build a planisphere for that latitude, and instructions as to how to put them
 import os
 import subprocess
 import time
+import shutil
 
 import text
 from alt_az import AltAzGrid
@@ -36,18 +37,23 @@ from settings import fetch_command_line_arguments
 from starwheel import StarWheel
 
 # Create output directory
-os.system("rm -Rf output")
-os.system("mkdir -p output/planispheres output/planisphere_parts")
+try:
+    shutil.rmtree("output")
+except:
+    pass
+os.mkdir("output")
 
 arguments = fetch_command_line_arguments()
 theme = arguments['theme']
+
+lats = [int(arguments['latitude'])] if ':' not in arguments['latitude'] else (range(int(arguments['latitude'].split(":")[0]), int(arguments['latitude'].split(":")[1])) if len(arguments['latitude'].split(":")) == 2 else range(int(arguments['latitude'].split(":")[0]), int(arguments['latitude'].split(":")[1]), int(arguments['latitude'].split(":")[2])))
 
 # Render planisphere in all available languages
 for language in text.text:
 
     # Render climates for latitudes at 5-degree spacings from 10 deg -- 85 deg, plus 52N
-    for latitude in list(range(-80, 90, 5)) + [52]:
-
+    for latitude in lats:
+        
         # Do not make equatorial planispheres, as they don't really work
         if -10 < latitude < 10:
             continue
@@ -57,8 +63,7 @@ for language in text.text:
 
         # A dictionary of common substitutions
         subs = {
-            "dir_parts": "output/planisphere_parts",
-            "dir_out": "output/planispheres",
+            "dir_parts": "output",
             "abs_lat": abs(latitude),
             "ns": "S" if southern else "N",
             "lang": language,
@@ -86,28 +91,9 @@ for language in text.text:
 
         # Copy the PDF versions of the components of this astrolabe into LaTeX's working directory, to produce a
         # PDF file containing all the parts of this astrolabe
-        os.system("mkdir -p doc/tmp")
-        os.system("cp {dir_parts}/starwheel_{abs_lat:02d}{ns}_{lang}.pdf doc/tmp/starwheel.pdf".format(**subs))
-        os.system("cp {dir_parts}/holder_{abs_lat:02d}{ns}_{lang}.pdf doc/tmp/holder.pdf".format(**subs))
-        os.system("cp {dir_parts}/alt_az_grid_{abs_lat:02d}{ns}_{lang}.pdf doc/tmp/altaz.pdf".format(**subs))
+        shutil.copy("{dir_parts}/starwheel_{abs_lat:02d}{ns}_{lang}.pdf".format(**subs), "doc/tmp/starwheel.pdf")
+        shutil.copy("{dir_parts}/holder_{abs_lat:02d}{ns}_{lang}.pdf".format(**subs), "doc/tmp/holder.pdf")
+        shutil.copy("{dir_parts}/alt_az_grid_{abs_lat:02d}{ns}_{lang}.pdf".format(**subs), "doc/tmp/altaz.pdf")
 
         with open("doc/tmp/lat.tex", "wt") as f:
             f.write(r"${abs_lat:d}^\circ${ns}".format(**subs))
-
-        # Wait for cairo to wake up and close the files
-        time.sleep(1)
-
-        # Build LaTeX documentation
-        for build_pass in range(3):
-            subprocess.check_output("cd doc ; pdflatex planisphere{lang_short}.tex".format(**subs), shell=True)
-
-        os.system("mv doc/planisphere{lang_short}.pdf "
-                  "{dir_out}/planisphere_{abs_lat:02d}{ns}_{lang}.pdf".format(**subs))
-
-        # For the English language planisphere, create a symlink with no language suffix in the filename
-        if language == "en":
-            os.system("ln -s planisphere_{abs_lat:02d}{ns}_en.pdf "
-                      "{dir_out}/planisphere_{abs_lat:02d}{ns}.pdf".format(**subs))
-
-        # Clean up the rubbish that LaTeX leaves behind
-        os.system("cd doc ; rm -f *.aux *.log *.dvi *.ps *.pdf")

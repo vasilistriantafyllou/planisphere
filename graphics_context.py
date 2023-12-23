@@ -490,7 +490,7 @@ class GraphicsContext:
                       )
             current_azimuth += (character_width * spacing) / radius
 
-    def text_wrapped(self, text: str | Sequence, x: float, y: float, width: float,
+    def text_wrapped(self, text: str, x: float, y: float, width: float,
                      justify: int = 0, line_spacing: float = 1.3,
                      h_align: int = 0, v_align: int = 0, rotation: float = 0) -> None:
         """
